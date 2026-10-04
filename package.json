@@ -1,0 +1,27 @@
+{
+  "name": "lesson-scheduler",
+  "private": true,
+  "version": "0.4.0",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm --workspace frontend run dev",
+    "build": "npm --workspace frontend run build",
+    "preview": "npm --workspace frontend run preview",
+    "typecheck": "npm --workspace frontend run typecheck",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:status": "supabase status",
+    "db:env": "node scripts/setup-local-env.mjs",
+    "db:types": "supabase gen types typescript --local > frontend/src/types/database.generated.ts",
+    "dev:local": "npm run db:env && npm run dev",
+    "db:cloud:dry-run": "node scripts/migrate-cloud.mjs --dry-run",
+    "db:cloud:push": "node scripts/migrate-cloud.mjs --push",
+    "validate:project": "node scripts/validate-project.mjs"
+  },
+  "devDependencies": {
+    "supabase": "^2.119.0"
+  }
+}
