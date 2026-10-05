@@ -1335,6 +1335,24 @@ Deferred to the next increment:
 - Notifications/reminders
 - Automated tests against a real Supabase/PostgreSQL environment
 
+## Phase 5 - Dashboard & UX Polish
+
+Completed:
+
+- Today's schedule dashboard
+- Upcoming seven-day schedule
+- Dashboard quick-add entry point
+- Loading, empty, and retryable error states
+- Schedule search by student, teacher, subject, or notes
+- Schedule status filtering
+- Deep links from dashboard to specific occurrences
+
+Deferred to later phases:
+
+- PWA service worker/install shell
+- Notifications/reminders
+- Automated end-to-end tests against a real hosted database
+
 ## 19. Scheduling Security Rules
 
 The frontend is never treated as the authorization boundary.

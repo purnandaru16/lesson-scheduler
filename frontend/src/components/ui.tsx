@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, PropsWithChildren, ReactNode, SelectHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
 
 export function Button({ className = '', children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
@@ -20,8 +20,12 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   )
 }
 
-export function Card({ className = '', children }: PropsWithChildren<{ className?: string }>) {
-  return <section className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${className}`}>{children}</section>
+export function Card({ className = '', children, ...props }: HTMLAttributes<HTMLElement>) {
+  return (
+    <section className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${className}`} {...props}>
+      {children}
+    </section>
+  )
 }
 
 export function PageHeader({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {

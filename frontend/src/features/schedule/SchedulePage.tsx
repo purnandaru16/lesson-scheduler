@@ -2,7 +2,7 @@ import 'temporal-polyfill/global'
 import 'temporal-polyfill/types/global'
 import '@fullcalendar/react/skeleton.css'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import FullCalendar from '@fullcalendar/react'
@@ -10,7 +10,8 @@ import timeGridPlugin from '@fullcalendar/react/timegrid'
 import dayGridPlugin from '@fullcalendar/react/daygrid'
 import listPlugin from '@fullcalendar/react/list'
 import interactionPlugin from '@fullcalendar/react/interaction'
-import { CalendarPlus, CalendarClock, CheckCircle2, Plus, RefreshCw, ShieldAlert, Trash2, UserRoundCog, X } from 'lucide-react'
+import { CalendarPlus, CalendarClock, CheckCircle2, Filter, Plus, RefreshCw, Search, ShieldAlert, Trash2, UserRoundCog, X } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -458,6 +459,18 @@ export function SchedulePage() {
   const [showForm, setShowForm] = useState(false)
   const [selected, setSelected] = useState<ScheduleOccurrence | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | ScheduleStatus>('ALL')
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1' && !showForm) {
+      setShowForm(true)
+      const next = new URLSearchParams(searchParams)
+      next.delete('new')
+      setSearchParams(next, { replace: true })
+    }
+  }, [searchParams, setSearchParams, showForm])
 
   const refs = useQuery({ queryKey: ['schedule-refs'], queryFn: fetchReferenceData })
   const schedule = useQuery({
@@ -466,14 +479,37 @@ export function SchedulePage() {
   })
 
   const isMobile = useMemo(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches, [])
-  const events = useMemo(() => (schedule.data ?? []).map((occurrence) => ({
+  const filteredOccurrences = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    return (schedule.data ?? []).filter((occurrence) => {
+      const matchesStatus = statusFilter === 'ALL' || occurrence.status === statusFilter
+      if (!matchesStatus) return false
+      if (!term) return true
+      return [occurrence.student?.name, occurrence.teacher?.name, occurrence.subject?.name, occurrence.notes]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term))
+    })
+  }, [schedule.data, search, statusFilter])
+
+  const events = useMemo(() => filteredOccurrences.map((occurrence) => ({
     id: occurrence.id,
     title: occurrence.student?.name ?? 'Lesson',
     start: `${occurrence.lesson_date}T${occurrence.start_time}`,
     end: `${occurrence.lesson_date}T${occurrence.end_time}`,
     classNames: [`lesson-status-${occurrence.status.toLowerCase()}`],
     extendedProps: { occurrence },
-  })), [schedule.data])
+  })), [filteredOccurrences])
+
+  useEffect(() => {
+    const occurrenceId = searchParams.get('occurrence')
+    if (!occurrenceId || !schedule.data) return
+    const occurrence = schedule.data.find((item) => item.id === occurrenceId)
+    if (!occurrence) return
+    setSelected(occurrence)
+    const next = new URLSearchParams(searchParams)
+    next.delete('occurrence')
+    setSearchParams(next, { replace: true })
+  }, [schedule.data, searchParams, setSearchParams])
 
   const headerToolbar = isMobile
     ? { left: 'prev,next today', center: 'title', right: 'listWeek,timeGridDay' }
@@ -518,10 +554,32 @@ export function SchedulePage() {
       <PageHeader
         title="Schedule"
         description="View lessons by day, week, or month and keep conflicts out of the calendar."
-        action={canManage ? <Button className="bg-slate-900 text-white hover:bg-slate-800" onClick={() => setShowForm(true)}><Plus className="mr-2" size={16} /> Add schedule</Button> : <Button className="bg-slate-100 text-slate-700" onClick={() => void schedule.refetch()}><RefreshCw className="mr-2" size={16} /> Refresh</Button>}
+        action={canManage ? <Button className="bg-slate-900 text-white hover:bg-slate-800" onClick={() => { setShowForm(true); setSearch(''); setStatusFilter('ALL') }}><Plus className="mr-2" size={16} /> Add schedule</Button> : <Button className="bg-slate-100 text-slate-700" onClick={() => void schedule.refetch()}><RefreshCw className="mr-2" size={16} /> Refresh</Button>}
       />
 
       {actionError ? <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{actionError}</div> : null}
+
+      <Card className="mb-5 p-3 sm:p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <label className="relative min-w-0 flex-1">
+            <span className="sr-only">Search schedule</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search student, teacher, subject, or notes" className="pl-9" />
+          </label>
+          <label className="flex items-center gap-2 md:w-52">
+            <Filter size={16} className="shrink-0 text-slate-400" />
+            <span className="sr-only">Filter by status</span>
+            <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'ALL' | ScheduleStatus)}>
+              <option value="ALL">All statuses</option>
+              <option value="SCHEDULED">Scheduled</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="NO_SHOW">No-show</option>
+            </Select>
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-slate-400">Showing {filteredOccurrences.length} of {(schedule.data ?? []).length} loaded lessons.</p>
+      </Card>
 
       {showForm && refs.data ? <ScheduleForm refs={refs.data} initialDate={range.start > toLocalDateInput() ? range.start : undefined} onClose={() => setShowForm(false)} onCreated={() => { setShowForm(false); void schedule.refetch() }} /> : null}
 
@@ -573,10 +631,16 @@ export function SchedulePage() {
       {schedule.data && schedule.data.length > 0 ? (
         <Card className="mt-5 overflow-hidden">
           <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
-            <div className="flex items-center gap-2 font-semibold text-slate-900"><CalendarPlus size={17} /> Upcoming lessons</div>
+            <div className="flex items-center gap-2 font-semibold text-slate-900"><CalendarPlus size={17} /> Loaded lessons</div>
           </div>
-          <div className="divide-y divide-slate-100">
-            {schedule.data.slice(0, 10).map((item) => (
+          {filteredOccurrences.length === 0 ? (
+            <div className="p-6 text-center">
+              <p className="font-medium text-slate-800">No matching lessons</p>
+              <p className="mt-1 text-sm text-slate-500">Adjust the search or status filter.</p>
+            </div>
+          ) : null}
+          {filteredOccurrences.length > 0 ? <div className="divide-y divide-slate-100">
+            {filteredOccurrences.slice(0, 10).map((item) => (
               <button key={item.id} type="button" onClick={() => setSelected(item)} className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 sm:px-5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-slate-900">{item.student?.name ?? 'Student'}</p>
@@ -585,7 +649,7 @@ export function SchedulePage() {
                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusClass(item.status)}`}>{item.status.replace('_', ' ')}</span>
               </button>
             ))}
-          </div>
+          </div> : null}
         </Card>
       ) : null}
 

@@ -64,6 +64,10 @@ The development environment used to generate this increment did not have the npm
 
 ## Current implementation
 
+### Phase 5 - Dashboard & UX Polish
+
+The dashboard now provides live today/upcoming lesson views, quick-add scheduling, retry/empty/loading states, and the schedule page adds search/status filtering. See `docs/PHASE-5.md`.
+
 ### Phase 4 - Local Supabase Development
 
 The repository now includes `supabase/config.toml`, reproducible local seed data, npm scripts for local Supabase lifecycle management, and automatic generation of the frontend local environment.
